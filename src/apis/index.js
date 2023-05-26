@@ -11,6 +11,7 @@ import RedactionSearchPatterns from 'constants/redactionSearchPatterns';
 import { languageEnum } from 'constants/languages';
 import { panelNames } from 'constants/panel';
 import addSearchListener from './addSearchListener';
+import setSaveAsHandler from './setSaveAsHandler';
 import addSortStrategy from './addSortStrategy';
 import annotationPopup from './annotationPopup';
 import closeDocument from './closeDocument';
@@ -294,6 +295,7 @@ export default (store) => {
     RedactionSearchPatterns,
     Alignment: ALIGNMENT,
     addSearchListener,
+    setSaveAsHandler,
     addSortStrategy: addSortStrategy(store),
     annotationPopup: annotationPopup(store),
     closeDocument: closeDocument(store),
