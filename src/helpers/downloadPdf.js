@@ -16,7 +16,6 @@ import { workerTypes } from 'constants/types';
 import { isOfficeEditorMode } from './officeEditor';
 import DataElements from 'src/constants/dataElement';
 
-
 export default async (dispatch, options = {}, documentViewerKey = 1) => {
   let doc = core.getDocument(documentViewerKey);
   const {
@@ -77,13 +76,7 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
       pages = range(1, doc.getPageCount() + 1, 1);
     }
     const state = store.getState();
-    const [
-      sortStrategy,
-      dateFormat,
-      language,
-      printQuality,
-      colorMap,
-    ] = [
+    const [sortStrategy, dateFormat, language, printQuality, colorMap] = [
       selectors.getSortStrategy(state),
       selectors.getPrintedNoteDateFormat(state),
       selectors.getCurrentLanguage(state),
@@ -200,10 +193,10 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
       language,
       true,
     );
-    const addWhiteBackground = (dataURL) => {
+    const addWhiteBackground = dataURL => {
       const pagePrintCanvas = document.createElement('canvas');
       const pagePrintContext = pagePrintCanvas.getContext('2d');
-      return new Promise((res) => {
+      return new Promise(res => {
         const printImg = new Image();
         printImg.src = dataURL;
         printImg.onload = () => {
@@ -230,19 +223,29 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
         dataURL = await addWhiteBackground(canvas.toDataURL());
         document.body.removeChild(page);
       } else {
-        if (doc?.getType() === workerTypes.OFFICE || doc?.getType() === workerTypes.LEGACY_OFFICE || doc?.getType() === workerTypes.OFFICE_EDITOR) {
+        if (
+          doc?.getType() === workerTypes.OFFICE ||
+          doc?.getType() === workerTypes.LEGACY_OFFICE ||
+          doc?.getType() === workerTypes.OFFICE_EDITOR
+        ) {
           dataURL = await addWhiteBackground(page);
         } else {
           dataURL = page;
         }
       }
-      const link = document.createElement('a');
-      link.href = dataURL;
-      link.download = `${filename}.png`;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (getSaveAsHandler() !== null) {
+        const handler = getSaveAsHandler();
+        const blob = await (await fetch(fileData)).blob(); 
+        handler(blob, `${filename}.png`);
+      } else {
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = `${filename}.png`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     }
     dispatch(actions.closeElement(DataElements.LOADING_MODAL));
     fireEvent(Events.FILE_DOWNLOADED);
@@ -254,7 +257,7 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
 
   if (isOfficeEditorMode() && convertToPDF) {
     const data = await doc.getFileData({
-      downloadType: 'pdf'
+      downloadType: 'pdf',
     });
 
     downloadDataAsFile(data, 'pdf', options);
@@ -262,7 +265,10 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
   }
 
   if (convertToPDF || includeComments) {
-    const xfdfString = await core.exportAnnotations({ fields: true, widgets: true, links: true, useDisplayAuthor }, documentViewerKey);
+    const xfdfString = await core.exportAnnotations(
+      { fields: true, widgets: true, links: true, useDisplayAuthor },
+      documentViewerKey,
+    );
     const fileData = await doc.getFileData({ xfdfString, includeAnnotations, downloadType: 'pdf' });
     doc = await core.createDocument(fileData, { extension: 'pdf', filename });
     if (includeComments) {
@@ -277,11 +283,17 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
       const padding = 36;
       const commentPages = {};
       for (const pageNumber of pages) {
-        const annotationNotes = getSortStrategies()[sortStrategy].getSortedNotes(core.getAnnotationsList(documentViewerKey).filter((annotation) => annotation.Listable &&
-          annotation.PageNumber === pageNumber &&
-          !annotation.isReply() &&
-          !annotation.isGrouped()
-        ));
+        const annotationNotes = getSortStrategies()[sortStrategy].getSortedNotes(
+          core
+            .getAnnotationsList(documentViewerKey)
+            .filter(
+              annotation =>
+                annotation.Listable &&
+                annotation.PageNumber === pageNumber &&
+                !annotation.isReply() &&
+                !annotation.isGrouped(),
+            ),
+        );
         if (!annotationNotes?.length) {
           continue;
         }
@@ -290,7 +302,7 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
         let ctx = new canvas2pdf.PdfContext(blobStream(), { font: 'Helvetica' });
         // eslint-disable-next-line no-inner-declarations
         async function savePage() {
-          const blob = await new Promise((res) => {
+          const blob = await new Promise(res => {
             ctx.stream.on('finish', () => res(ctx.stream.toBlob('application/pdf')));
             ctx.end();
           });
@@ -328,7 +340,7 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
           let skip;
           // // Draw Image onto canvas
           // eslint-disable-next-line no-loop-func
-          await new Promise((resolve) => {
+          await new Promise(resolve => {
             const key = mapAnnotationToKey(annotation);
             const colorProperty = colorMap[key] && colorMap[key].iconColor;
             const color = annotation[colorProperty || 'StrokeColor'].toString();
@@ -365,11 +377,11 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
               }
               const textSize = ctx.measureText(text);
               if (textSize.width + x > pageWidth - padding - cardSpacing) {
-                let maxSize = (pageWidth - padding * 2 - cardSpacing * 3);
+                let maxSize = pageWidth - padding * 2 - cardSpacing * 3;
                 if (isReply) {
                   maxSize -= 36;
                 }
-                const indexOfLastSpaceToFit = text.lastIndexOf(' ', text.length * maxSize / (textSize.width + x));
+                const indexOfLastSpaceToFit = text.lastIndexOf(' ', (text.length * maxSize) / (textSize.width + x));
                 extractProperties(await drawText(text.substring(0, indexOfLastSpaceToFit), { x, y }));
                 y += textSize.height;
                 x = startX;
@@ -382,18 +394,21 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
 
             // For drawing text with page wrap on Y axis
             async function drawText(text, options = {}) {
-              const {
-                bold = false,
-                fillStyle = '#000',
-                size = bodyFontSize,
-                font = 'Helvetica',
-              } = options;
+              const { bold = false, fillStyle = '#000', size = bodyFontSize, font = 'Helvetica' } = options;
               let { x, y } = options;
               ctx.fillStyle = fillStyle;
               ctx.font = `${size}px ${font}`;
               const textSize = ctx.measureText(text);
               if (textSize.height + y > pageHeight - padding) {
-                drawRoundedRect(ctx, padding, startY, pageWidth - padding * 2, pageHeight - startY - padding, 4, 'bottom');
+                drawRoundedRect(
+                  ctx,
+                  padding,
+                  startY,
+                  pageWidth - padding * 2,
+                  pageHeight - startY - padding,
+                  4,
+                  'bottom',
+                );
                 await savePage();
                 ctx = new canvas2pdf.PdfContext(blobStream(), { font: 'Helvetica' });
                 ctx.fillStyle = fillStyle;
@@ -489,7 +504,7 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
           await doc.insertPages(tempDoc, [1], page + pageOffset);
           if (!downloadAllPages) {
             // eslint-disable-next-line no-loop-func
-            pages = pages.map((p) => (p >= page + pageOffset ? p + 1 : p));
+            pages = pages.map(p => (p >= page + pageOffset ? p + 1 : p));
             pages.push(page + pageOffset);
           }
           pageOffset++;
@@ -517,75 +532,80 @@ export default async (dispatch, options = {}, documentViewerKey = 1) => {
     options.xfdfString = window.Core.EMPTY_XFDF;
   }
 
-  return annotationsPromise.then(async (xfdfString) => {
-    options.xfdfString = options.xfdfString || xfdfString;
-    if (!includeAnnotations) {
-      options.includeAnnotations = false;
-    }
-
-    const getDownloadFilename = (name, extension) => {
-      if (name.slice(-extension.length).toLowerCase() !== extension) {
-        name += extension;
+  return annotationsPromise
+    .then(async xfdfString => {
+      options.xfdfString = options.xfdfString || xfdfString;
+      if (!includeAnnotations) {
+        options.includeAnnotations = false;
       }
-      return name;
-    };
 
-    const array = doc.getFilename().split('.');
-    const extension = `${array[array.length - 1]}`;
-    const isNotPDF =
-      doc?.getType().includes('video')
-      || doc?.getType() === 'audio'
-      || doc?.getType() === workerTypes.OFFICE
-      || isOfficeEditorMode();
-    const downloadName =
-      isNotPDF
+      const getDownloadFilename = (name, extension) => {
+        if (name.slice(-extension.length).toLowerCase() !== extension) {
+          name += extension;
+        }
+        return name;
+      };
+
+      const array = doc.getFilename().split('.');
+      const extension = `${array[array.length - 1]}`;
+      const isNotPDF =
+        doc?.getType().includes('video') ||
+        doc?.getType() === 'audio' ||
+        doc?.getType() === workerTypes.OFFICE ||
+        isOfficeEditorMode();
+      const downloadName = isNotPDF
         ? getDownloadFilename(filename, `.${extension}`)
         : getDownloadFilename(filename, '.pdf');
 
-    // Cloning the options object to be able to delete the customDocument property if needed.
-    // doc.getFileData(options) will throw an error if this customDocument property is passed in
-    const clonedOptions = Object.assign({}, options);
-    if (clonedOptions.documentToBeDownloaded) {
-      doc = clonedOptions.documentToBeDownloaded;
-      delete clonedOptions.documentToBeDownloaded;
-    }
-    if (clonedOptions.store) {
-      delete clonedOptions.store;
-    }
+      // Cloning the options object to be able to delete the customDocument property if needed.
+      // doc.getFileData(options) will throw an error if this customDocument property is passed in
+      const clonedOptions = Object.assign({}, options);
+      if (clonedOptions.documentToBeDownloaded) {
+        doc = clonedOptions.documentToBeDownloaded;
+        delete clonedOptions.documentToBeDownloaded;
+      }
+      if (clonedOptions.store) {
+        delete clonedOptions.store;
+      }
 
-    const handleError = (error) => {
+      const handleError = error => {
+        dispatch(actions.closeElement(DataElements.LOADING_MODAL));
+        throw new Error(error.message);
+      };
+
+      const signatureWidgets = core
+        .getAnnotationsList()
+        .filter(a => a instanceof window.Core.Annotations.SignatureWidgetAnnotation);
+      const signedStatues = await Promise.all(signatureWidgets.map(a => a.isSignedDigitally()));
+      const isSignedDigitally = signedStatues.includes(true);
+      if (isSignedDigitally) {
+        clonedOptions.flags |= window.Core.SaveOptions.INCREMENTAL;
+      }
+
+      if (externalURL) {
+        const downloadIframe = getRootNode().querySelector('#download-iframe') || document.createElement('iframe');
+        downloadIframe.width = 0;
+        downloadIframe.height = 0;
+        downloadIframe.id = 'download-iframe';
+        downloadIframe.src = null;
+        document.body.appendChild(downloadIframe);
+        downloadIframe.src = externalURL;
+        dispatch(actions.closeElement(DataElements.LOADING_MODAL));
+        fireEvent(Events.FILE_DOWNLOADED);
+      } else if (pages && !downloadAllPages) {
+        return doc
+          .extractPages(pages, options.xfdfString)
+          .then(data => downloadDataAsFile(data, extension, { ...options, downloadName }), handleError);
+      } else {
+        return doc
+          .getFileData(clonedOptions)
+          .then(data => downloadDataAsFile(data, extension, { ...options, downloadName }), handleError);
+      }
+    })
+    .catch(error => {
+      console.warn(error);
       dispatch(actions.closeElement(DataElements.LOADING_MODAL));
-      throw new Error(error.message);
-    };
-
-    const signatureWidgets = core.getAnnotationsList().filter((a) => a instanceof window.Core.Annotations.SignatureWidgetAnnotation);
-    const signedStatues = await Promise.all(signatureWidgets.map((a) => a.isSignedDigitally()));
-    const isSignedDigitally = signedStatues.includes(true);
-    if (isSignedDigitally) {
-      clonedOptions.flags |= window.Core.SaveOptions.INCREMENTAL;
-    }
-
-    if (externalURL) {
-      const downloadIframe =
-        getRootNode().querySelector('#download-iframe') ||
-        document.createElement('iframe');
-      downloadIframe.width = 0;
-      downloadIframe.height = 0;
-      downloadIframe.id = 'download-iframe';
-      downloadIframe.src = null;
-      document.body.appendChild(downloadIframe);
-      downloadIframe.src = externalURL;
-      dispatch(actions.closeElement(DataElements.LOADING_MODAL));
-      fireEvent(Events.FILE_DOWNLOADED);
-    } else if (pages && !downloadAllPages) {
-      return doc.extractPages(pages, options.xfdfString).then((data) => downloadDataAsFile(data, extension, { ...options, downloadName }), handleError);
-    } else {
-      return doc.getFileData(clonedOptions).then((data) => downloadDataAsFile(data, extension, { ...options, downloadName }), handleError);
-    }
-  }).catch((error) => {
-    console.warn(error);
-    dispatch(actions.closeElement(DataElements.LOADING_MODAL));
-  });
+    });
 };
 
 function drawRoundedRect(ctx, x, y, width, height, radius, skip = undefined) {
@@ -624,5 +644,5 @@ function drawRoundedRect(ctx, x, y, width, height, radius, skip = undefined) {
 }
 
 function reverseObject(obj) {
-  return Object.assign({}, ...(Object.entries(obj).map(([key, value]) => ({ [value]: key }))));
+  return Object.assign({}, ...Object.entries(obj).map(([key, value]) => ({ [value]: key })));
 }
