@@ -183,13 +183,7 @@ const useStylePanel = ({ selectedAnnotations, currentTool }) => {
       updateFromTool(currentTool);
       setShowLineStyleOptions(getDataWithKey(mapToolNameToKey(currentToolName)).hasLineEndings);
     }
-  }, [selectedAnnotation, currentTool, selectedAnnotations, i18n.language]);
-
-  const getColorFromHex = (hex) => {
-    const colorRGB = hexToRGBA(hex);
-    const color = new Annotations.Color(colorRGB.r, colorRGB.g, colorRGB.b, colorRGB.a);
-    return color;
-  };
+  }, [selectedAnnotation, currentTool]);
 
   const onStyleChange = (property, value, doneStyleChange = true) => {
     setStyle((previousStyle) => {
