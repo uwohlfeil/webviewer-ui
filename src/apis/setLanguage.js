@@ -23,6 +23,11 @@ import textToolNames from 'constants/textToolNames';
 import localStorageManager from 'helpers/localStorageManager';
 import { getInstanceID } from 'helpers/getRootNode';
 import setToolStyles from 'helpers/setToolStyles';
+import getAvailableLanguages from './getAvailableLanguages';
+import textToolNames from 'constants/textToolNames';
+import localStorageManager from 'helpers/localStorageManager';
+import { getInstanceID } from 'helpers/getRootNode';
+import setToolStyles from 'helpers/setToolStyles';
 
 let pendingLanguageTimeout;
 export default (store) => async (language) => {
@@ -30,10 +35,8 @@ export default (store) => async (language) => {
     clearTimeout(pendingLanguageTimeout);
   }
 
-  const isDefaultLanguage = getAvailableLanguages().includes(language);
-  const isCustomLanguage = i18next.hasResourceBundle(language, 'translation');
-  const isUnsupported = !isDefaultLanguage && !isCustomLanguage;
-  if (isUnsupported) {
+  const availableLanguages = getAvailableLanguages();
+  if (!availableLanguages.includes(language)) {
     console.warn(`Language with ISO code "${language}" is not supported.`);
     return;
   }
@@ -66,6 +69,9 @@ export default (store) => async (language) => {
 
         updateTextToolDefaults();
 
+
+        updateTextToolDefaults();
+
         fireEvent(Events['LANGUAGE_CHANGED'], languageEventObject);
       }
       resolve();
@@ -89,6 +95,41 @@ const setDatePickerLocale = (i18nextPromise, language) => {
         widget.refreshDatePicker();
       });
   });
+};
+
+const applyTextToolDirectionalDefaults = (toolName, directionSpecificStyles) => {
+  const isRTL = i18next?.dir() === 'rtl';
+  const rtlDefaults = directionSpecificStyles || {};
+
+  const font = isRTL ? rtlDefaults.Font || 'Noto Sans Arabic' : 'Helvetica';
+  const textAlign = isRTL ? rtlDefaults.TextAlign || 'right' : 'left';
+
+  setToolStyles(toolName, 'Font', font);
+  setToolStyles(toolName, 'TextAlign', textAlign);
+};
+
+const updateTextToolDefaults = () => {
+  const { ToolNames } = window.Core.Tools;
+
+  for (const toolKey of textToolNames) {
+    const toolName = ToolNames[toolKey];
+    let directionSpecificStyles = null;
+
+    if (localStorageManager.isLocalStorageEnabled()) {
+      const instanceId = getInstanceID();
+      directionSpecificStyles = JSON.parse(localStorageManager.getItemSynchronous(`${instanceId}-toolData-${toolName}-${i18next.dir()}`));
+    }
+    if (directionSpecificStyles && (directionSpecificStyles.Font || directionSpecificStyles.TextAlign)) {
+      if (directionSpecificStyles.Font) {
+        setToolStyles(toolName, 'Font', directionSpecificStyles.Font);
+      }
+      if (directionSpecificStyles.TextAlign) {
+        setToolStyles(toolName, 'TextAlign', directionSpecificStyles.TextAlign);
+      }
+    } else {
+      applyTextToolDirectionalDefaults(toolName);
+    }
+  }
 };
 
 const applyTextToolDirectionalDefaults = (toolName, directionSpecificStyles) => {
