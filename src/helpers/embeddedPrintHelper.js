@@ -22,7 +22,7 @@ export const FORMAT_DOCUMENT_FOR_PRINT_OPTION = {
  * It calls extractPages without xfdfString to create a clean document without
  * any annotations or comments.
  * @param {window.Core.Docment} document Document object
- * @returns {Promise<window.Core.Document>} Copied document
+ * @returns {window.Core.Document} Copied document
  * @ignore
  * @remarks
  * extractPages keeps a protected pdf password if the user has already entered it.
@@ -90,15 +90,12 @@ export const applyWatermark = async (document, watermarkModalOptions) => {
  * @param {object} printingOptions object with printing options
  * @returns {window.Core.Document} Document object with the comments formatted
  * @ignore
- * @remarks
- * formatDocumentForPrint does modify the document layers, annotations and documents. It is no longer
- * exclusively tied to fullAPI being enabled.
  */
 export const formatFinalDocument = async (document, printingOptions) => {
   const { includeComments, includeAnnotations } = printingOptions;
   const pagesArray = getPageArray(document.getPageCount());
 
-  if (!includeComments && includeAnnotations) {
+  if (!includeComments && includeAnnotations && core.isFullPDFEnabled()) {
     const formattedDoc = await document.formatDocumentForPrint(pagesArray, FORMAT_DOCUMENT_FOR_PRINT_OPTION.DocumentAndAnnotations);
     return formattedDoc;
   } else if (!includeComments) {
