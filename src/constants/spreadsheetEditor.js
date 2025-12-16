@@ -40,6 +40,12 @@ export const horizontalAlignmentLabels = {
   3: 'right',
 };
 
+export const wrapTextLabels = {
+  1: 'overflow',
+  2: 'wrap',
+  3: 'clip',
+};
+
 export const formatsMap = {
   'calendarFormat': 'MM/dd/yyyy',
   'clockHourFormat': 'hh:mm:ss AM/PM',

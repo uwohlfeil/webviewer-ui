@@ -34,7 +34,6 @@ export const ViewOnlyApp = createTemplate({
         'icon': 'icon-pdf-portfolio',
         'label': 'portfolio.createPDFPortfolio',
         'title': 'portfolio.createPDFPortfolio',
-        'isActive': false,
         'type': 'presetButton',
         'buttonType': 'createPortfolioButton'
       }],
@@ -58,8 +57,8 @@ ViewOnlyApp.play = async ({ canvasElement }) => {
   storeRef.current.dispatch(actions.openElements(['mainMenuFlyout', 'searchPanel', 'randomElement']));
   window.instance.UI.enableViewOnlyMode();
 
-  // Should enable core readOnly
-  expect(core.getIsReadOnly()).toBe(true);
+  // Should not enable core readOnly as they are different modes
+  expect(core.getIsReadOnly()).toBe(false);
 
   // Should always be false if dataElement is undefined or not a component type that we have a whitelist for
   shouldBeFalse = selectors.isDisabledViewOnly(storeRef.current.getState(), 'randomElement');
@@ -161,7 +160,6 @@ export const ViewOnlyWhitelist = createTemplate({
         'icon': 'icon-pdf-portfolio',
         'label': 'portfolio.createPDFPortfolio',
         'title': 'portfolio.createPDFPortfolio',
-        'isActive': false,
         'type': 'presetButton',
         'buttonType': 'createPortfolioButton'
       }],
@@ -179,8 +177,11 @@ ViewOnlyWhitelist.play = async ({ canvasElement }) => {
 
   window.instance.UI.enableViewOnlyMode();
 
+  // Should be able to whitelist and display elements immediately even after entering view-only mode
+  window.instance.UI.addToViewOnlyWhitelist(['toolbarGroup-Insert']);
+
   const ribbonItems = canvasElement.querySelectorAll('.RibbonItem');
-  expect(ribbonItems.length).toBe(3);
+  expect(ribbonItems.length).toBe(4);
 
   // Annotate ribbon should not show header since no buttons are whitelisted
   const canvas = within(canvasElement);

@@ -19,6 +19,7 @@ module.exports = {
     filename: 'webviewer-ui.min.js',
     chunkFilename: 'chunks/[name].chunk.js',
     publicPath: './',
+    chunkLoadingGlobal: 'webpackJsonpWebViewerUI',
   },
   plugins: [
     new CopyWebpackPlugin([
@@ -84,7 +85,7 @@ module.exports = {
           },
         },
         include: [path.resolve(__dirname, 'src'), path.resolve(__dirname, 'node_modules')],
-        exclude: function(modulePath) {
+        exclude: function (modulePath) {
           return /node_modules/.test(modulePath) &&
             !(/node_modules[\\/](react-dnd|react-quill-new|quill-mention|quill)[\\/]/.test(modulePath));
         },
@@ -95,7 +96,7 @@ module.exports = {
           {
             loader: 'style-loader',
             options: {
-              insert: function(styleTag) {
+              insert: function (styleTag) {
                 function findNestedWebComponents(tagName, root = document) {
                   const elements = [];
 
@@ -129,7 +130,7 @@ module.exports = {
                   const webComponent = webComponents[i];
                   if (i === 0) {
                     webComponent.shadowRoot.appendChild(styleTag);
-                    styleTag.onload = function() {
+                    styleTag.onload = function () {
                       if (clonedStyleTags.length > 0) {
                         clonedStyleTags.forEach((styleNode) => {
                           // eslint-disable-next-line no-unsanitized/property

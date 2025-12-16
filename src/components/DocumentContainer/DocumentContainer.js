@@ -117,7 +117,7 @@ class DocumentContainer extends React.PureComponent {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      this.container.current.addEventListener('dragover', this.preventDefault);
+      this.container.current.removeEventListener('dragover', this.preventDefault);
       this.container.current.removeEventListener('drop', this.onDrop);
     }
 
@@ -367,6 +367,7 @@ class DocumentContainer extends React.PureComponent {
                 data-element="documentContainer"
                 onScroll={this.handleScroll}
                 aria-label={i18next.t('accessibility.landmarks.documentContent')}
+                tabIndex="-1"
               >
                 {/* tabIndex="-1" to keep document focused when in single page mode */}
                 <div className={documentClassName} ref={this.document} tabIndex="-1" />
