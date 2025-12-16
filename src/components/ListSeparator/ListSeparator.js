@@ -3,18 +3,19 @@ import PropTypes from 'prop-types';
 
 import './ListSeparator.scss';
 import classNames from 'classnames';
-import { isSpreadsheetEditorMode } from 'src/helpers/officeEditor';
 
 const propTypes = {
   renderContent: PropTypes.func,
   children: PropTypes.node,
+  isBoldHeader: PropTypes.bool,
 };
 
 const ListSeparator = (function(props) {
   const content = props.renderContent ? props.renderContent() : props.children;
+  const isBoldHeader = props.isBoldHeader;
   return <h4 className={classNames(
     'ListSeparator',
-    { 'sheet-name': isSpreadsheetEditorMode() }
+    { 'bold-header': isBoldHeader },
   )}>{content}</h4>;
 });
 

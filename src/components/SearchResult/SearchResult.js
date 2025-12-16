@@ -8,17 +8,18 @@ import CellMeasurer, { CellMeasurerCache } from 'react-virtualized/dist/commonjs
 import ListSeparator from 'components/ListSeparator';
 import classNames from 'classnames';
 import { isSpreadsheetEditorMode } from 'src/helpers/officeEditor';
+import { useTranslation } from 'react-i18next';
+import useIsRTL from 'src/hooks/useIsRTL';
 
 const SearchResultListSeparatorPropTypes = {
   currentResultIndex: PropTypes.number.isRequired,
   searchResults: PropTypes.arrayOf(PropTypes.object).isRequired,
-  t: PropTypes.func.isRequired,
-  pageLabels: PropTypes.arrayOf(PropTypes.any).isRequired,
+  listSeparatorText: PropTypes.string.isRequired,
   isProcessingSearchResults: PropTypes.bool
 };
 
 function SearchResultListSeparator(props) {
-  const { currentResultIndex, searchResults, t, pageLabels } = props;
+  const { currentResultIndex, searchResults, listSeparatorText } = props;
 
   const previousIndex = currentResultIndex === 0 ? currentResultIndex : currentResultIndex - 1;
   const currentListItem = searchResults[currentResultIndex];
@@ -29,15 +30,9 @@ function SearchResultListSeparator(props) {
   const isInDifferentSheet = previousListItem.sheetOrder !== currentListItem.sheetOrder;
 
   if (isFirstListItem || isInDifferentPage || isInDifferentSheet) {
-    let listSeparatorText;
-    if (isSpreadsheetEditorMode()) {
-      listSeparatorText = pageLabels[currentListItem.sheetOrder];
-    } else {
-      listSeparatorText = `${t('option.shared.page')} ${pageLabels[currentListItem.pageNum - 1]}`;
-    }
     return (
       <div role="cell">
-        <ListSeparator>{listSeparatorText}</ListSeparator>
+        <ListSeparator isBoldHeader={isSpreadsheetEditorMode()}>{listSeparatorText}</ListSeparator>
       </div>
     );
   }
@@ -56,14 +51,23 @@ const SearchResultListItemPropTypes = {
 };
 
 function SearchResultListItem(props) {
+  const [t] = useTranslation();
   const [customizableUI] = useSelector((state) => [state.featureFlags.customizableUI]);
   const { result, currentResultIndex, activeResultIndex, onSearchResultClick, activeDocumentViewerKey, title } = props;
   const { ambientStr, resultStrStart, resultStrEnd, resultStr } = result;
   const textBeforeSearchValue = ambientStr.slice(0, resultStrStart);
   const searchValue = ambientStr === '' ? resultStr : ambientStr.slice(resultStrStart, resultStrEnd);
   const textAfterSearchValue = ambientStr.slice(resultStrEnd);
+  const isRtl = useIsRTL();
+  let ariaLabel = '';
+  if (isSpreadsheetEditorMode()) {
+    ariaLabel = isRtl ? `${ambientStr}:${result.cell} ${t('action.goToResult')}` : `${t('action.goToResult')} ${result.cell}:${ambientStr}`;
+  } else {
+    ariaLabel = isRtl ? `${ambientStr}:${t('action.goToResult')}` : `${t('action.goToResult')}:${ambientStr}`;
+  }
   return (
     <button
+      aria-label={ariaLabel}
       role="cell"
       className={classNames({
         'SearchResult': true,
@@ -123,6 +127,12 @@ function SearchResult(props) {
   const rowRenderer = useCallback(function rowRendererCallback(rendererOptions) {
     const { index, key, parent, style } = rendererOptions;
     const result = searchResults[index];
+    let listSeparatorText;
+    if (isSpreadsheetEditorMode()) {
+      listSeparatorText = pageLabels[result.sheetOrder];
+    } else {
+      listSeparatorText = `${t('option.shared.page')} ${pageLabels[result.pageNum - 1]}`;
+    }
     return (
       <CellMeasurer
         cache={cellMeasureCache}
@@ -134,10 +144,9 @@ function SearchResult(props) {
         {({ registerChild }) => (
           <div role="row" ref={registerChild} style={style}>
             <SearchResultListSeparator
+              listSeparatorText={listSeparatorText}
               currentResultIndex={index}
               searchResults={searchResults}
-              pageLabels={pageLabels}
-              t={t}
             />
             <SearchResultListItem
               title={isSpreadsheetEditorMode ? result.cell : undefined}
